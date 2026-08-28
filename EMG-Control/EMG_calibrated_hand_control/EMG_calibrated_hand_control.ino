@@ -27,17 +27,19 @@
 const int SENSOR_PIN = A0;
 int testSpeed = 150;
 
+// This is a random comment
+
 // Live thresholds. Defaults are the hand-tuned values that worked in
 // testing; calibrate overwrites them.
-int threshold_low  = 140;
+int threshold_low = 140;
 int threshold_high = 220;
 
 // Calibration parameters
-const unsigned long CAL_CAPTURE_MS = 5000;   // length of each capture window
-const unsigned long CAL_SAMPLE_MS  = 2;      // ~500 Hz during capture
-const float LOW_FRACTION   = 0.05f;
-const float HIGH_FRACTION  = 0.10f;
-const int   MIN_VALID_SPAN = 100;            // max must exceed rest by this
+const unsigned long CAL_CAPTURE_MS = 5000; // length of each capture window
+const unsigned long CAL_SAMPLE_MS = 2;     // ~500 Hz during capture
+const float LOW_FRACTION = 0.05f;
+const float HIGH_FRACTION = 0.10f;
+const int MIN_VALID_SPAN = 100; // max must exceed rest by this
 
 // Live stream throttle
 const unsigned long PRINT_INTERVAL_MS = 50;
@@ -45,68 +47,79 @@ unsigned long lastPrintMs = 0;
 bool streaming = false;
 
 // EMG state machine
-bool fingersActive = false;   // true = EMG has triggered and not yet released
-bool emgCloseMode  = true;    // true = trigger closes; false = trigger opens
+bool fingersActive = false; // true = EMG has triggered and not yet released
+bool emgCloseMode = true;   // true = trigger closes; false = trigger opens
 
 // Calibration results, kept for inspection
 int emg_rest_avg = 0;
-int emg_max_avg  = 0;
+int emg_max_avg = 0;
 int emg_max_peak = 0;
 
 // ---- types must be declared before ANY function definition, because the
 // ---- Arduino preprocessor injects auto-generated prototypes above the
 // ---- first function in the file.
 
-struct Finger {
+struct Finger
+{
   int in1, in2, ena;
 };
 
-struct Capture {
-  int  mean;
-  int  peak;
-  int  floorVal;
+struct Capture
+{
+  int mean;
+  int peak;
+  int floorVal;
   long samples;
 };
 
 Finger fingers[4] = {
-  {2, 3, 10},   // Finger 1
-  {4, 5, 11},   // Finger 2
-  {6, 7, 12},   // Finger 3
-  {8, 9, 13}    // Finger 4
+    {2, 3, 10}, // Finger 1
+    {4, 5, 11}, // Finger 2
+    {6, 7, 12}, // Finger 3
+    {8, 9, 13}  // Finger 4
 };
 
 // ======================================================= motor primitives
 
-void openFinger(int i) {
+void openFinger(int i)
+{
   digitalWrite(fingers[i].in1, HIGH);
   digitalWrite(fingers[i].in2, LOW);
   analogWrite(fingers[i].ena, testSpeed);
 }
 
-void closeFinger(int i) {
+void closeFinger(int i)
+{
   digitalWrite(fingers[i].in1, LOW);
   digitalWrite(fingers[i].in2, HIGH);
   analogWrite(fingers[i].ena, testSpeed);
 }
 
-void stopFinger(int i) {
+void stopFinger(int i)
+{
   digitalWrite(fingers[i].in1, LOW);
   digitalWrite(fingers[i].in2, LOW);
   analogWrite(fingers[i].ena, 0);
 }
 
-void stopAll() {
-  for (int i = 0; i < 4; i++) stopFinger(i);
+void stopAll()
+{
+  for (int i = 0; i < 4; i++)
+    stopFinger(i);
   Serial.println("All fingers stopped");
 }
 
-void closeAll() {
-  for (int i = 0; i < 4; i++) closeFinger(i);
+void closeAll()
+{
+  for (int i = 0; i < 4; i++)
+    closeFinger(i);
   Serial.println("All fingers closing");
 }
 
-void openAll() {
-  for (int i = 0; i < 4; i++) openFinger(i);
+void openAll()
+{
+  for (int i = 0; i < 4; i++)
+    openFinger(i);
   Serial.println("All fingers opening");
 }
 
@@ -116,11 +129,15 @@ String serialBuffer = "";
 
 // Non-blocking. Returns true once a complete line has arrived, trimmed
 // and lower-cased into 'out'.
-bool readLine(String &out) {
-  while (Serial.available()) {
+bool readLine(String &out)
+{
+  while (Serial.available())
+  {
     char c = Serial.read();
-    if (c == '\n' || c == '\r') {
-      if (serialBuffer.length() > 0) {
+    if (c == '\n' || c == '\r')
+    {
+      if (serialBuffer.length() > 0)
+      {
         out = serialBuffer;
         out.trim();
         out.toLowerCase();
@@ -128,7 +145,9 @@ bool readLine(String &out) {
         return true;
       }
       // bare terminator, ignore
-    } else {
+    }
+    else
+    {
       serialBuffer += c;
     }
   }
@@ -136,9 +155,11 @@ bool readLine(String &out) {
 }
 
 // Blocking wrapper, used only inside calibration.
-String waitForLine() {
+String waitForLine()
+{
   String line;
-  while (!readLine(line)) {
+  while (!readLine(line))
+  {
     delay(1);
   }
   return line;
@@ -146,23 +167,28 @@ String waitForLine() {
 
 // =============================================================== capture
 
-Capture captureWindow(unsigned long durationMs) {
+Capture captureWindow(unsigned long durationMs)
+{
   unsigned long start = millis();
   long sum = 0;
-  long n   = 0;
-  int  peak = 0;
-  int  floorVal = 32767;
-  int  lastSecond = -1;
+  long n = 0;
+  int peak = 0;
+  int floorVal = 32767;
+  int lastSecond = -1;
 
-  while (millis() - start < durationMs) {
+  while (millis() - start < durationMs)
+  {
     int v = analogRead(SENSOR_PIN);
     sum += v;
     n++;
-    if (v > peak)     peak = v;
-    if (v < floorVal) floorVal = v;
+    if (v > peak)
+      peak = v;
+    if (v < floorVal)
+      floorVal = v;
 
     int secondsElapsed = (millis() - start) / 1000;
-    if (secondsElapsed != lastSecond) {
+    if (secondsElapsed != lastSecond)
+    {
       lastSecond = secondsElapsed;
       Serial.print(durationMs / 1000 - secondsElapsed);
       Serial.print("... ");
@@ -172,19 +198,24 @@ Capture captureWindow(unsigned long durationMs) {
   Serial.println();
 
   Capture c;
-  c.mean     = (n > 0) ? (int)(sum / n) : 0;
-  c.peak     = peak;
+  c.mean = (n > 0) ? (int)(sum / n) : 0;
+  c.peak = peak;
   c.floorVal = floorVal;
-  c.samples  = n;
+  c.samples = n;
   return c;
 }
 
-void reportCapture(const char *label, Capture c) {
+void reportCapture(const char *label, Capture c)
+{
   Serial.print(label);
-  Serial.print(" -> mean ");   Serial.print(c.mean);
-  Serial.print(" | min ");     Serial.print(c.floorVal);
-  Serial.print(" | peak ");    Serial.print(c.peak);
-  Serial.print(" | n=");       Serial.println(c.samples);
+  Serial.print(" -> mean ");
+  Serial.print(c.mean);
+  Serial.print(" | min ");
+  Serial.print(c.floorVal);
+  Serial.print(" | peak ");
+  Serial.print(c.peak);
+  Serial.print(" | n=");
+  Serial.println(c.samples);
 }
 
 // =========================================================== calibration
@@ -197,21 +228,24 @@ void reportCapture(const char *label, Capture c) {
   that offset is baseline rather than signal and has to be subtracted
   before any fraction is applied.
 */
-void computeThresholds(int rest, int maxVal) {
+void computeThresholds(int rest, int maxVal)
+{
   int span = maxVal - rest;
-  threshold_low  = rest + (int)(LOW_FRACTION  * span);
+  threshold_low = rest + (int)(LOW_FRACTION * span);
   threshold_high = rest + (int)(HIGH_FRACTION * span);
 }
 
-void printThresholds() {
+void printThresholds()
+{
   Serial.print("thresholds: low = ");
   Serial.print(threshold_low);
   Serial.print(" | high = ");
   Serial.println(threshold_high);
 }
 
-void runCalibration() {
-  int savedLow  = threshold_low;
+void runCalibration()
+{
+  int savedLow = threshold_low;
   int savedHigh = threshold_high;
 
   // ---- SAFETY INTERLOCK ----
@@ -232,8 +266,16 @@ void runCalibration() {
   Serial.println("Type r + Enter to start a 5 second capture.");
 
   String cmd = waitForLine();
-  if (cmd == "x") { Serial.println("Aborted. Thresholds unchanged."); return; }
-  if (cmd != "r") { Serial.println("Unexpected input. Aborted."); return; }
+  if (cmd == "x")
+  {
+    Serial.println("Aborted. Thresholds unchanged.");
+    return;
+  }
+  if (cmd != "r")
+  {
+    Serial.println("Unexpected input. Aborted.");
+    return;
+  }
 
   Serial.print("Measuring rest, hold still: ");
   Capture rest = captureWindow(CAL_CAPTURE_MS);
@@ -246,8 +288,16 @@ void runCalibration() {
   Serial.println("Type r + Enter to start a 5 second capture.");
 
   cmd = waitForLine();
-  if (cmd == "x") { Serial.println("Aborted. Thresholds unchanged."); return; }
-  if (cmd != "r") { Serial.println("Unexpected input. Aborted."); return; }
+  if (cmd == "x")
+  {
+    Serial.println("Aborted. Thresholds unchanged.");
+    return;
+  }
+  if (cmd != "r")
+  {
+    Serial.println("Unexpected input. Aborted.");
+    return;
+  }
 
   Serial.print("Measuring max, hold the contraction: ");
   Capture maxc = captureWindow(CAL_CAPTURE_MS);
@@ -256,13 +306,14 @@ void runCalibration() {
 
   // ---- Validate ----
   int span = maxc.mean - rest.mean;
-  if (span < MIN_VALID_SPAN) {
+  if (span < MIN_VALID_SPAN)
+  {
     Serial.println("!! CALIBRATION FAILED !!");
     Serial.print("Max is only ");
     Serial.print(span);
     Serial.println(" counts above rest - not distinguishable.");
     Serial.println("Check electrode contact, skin prep and cable seating.");
-    threshold_low  = savedLow;
+    threshold_low = savedLow;
     threshold_high = savedHigh;
     printThresholds();
     return;
@@ -270,23 +321,28 @@ void runCalibration() {
 
   // ---- Apply ----
   emg_rest_avg = rest.mean;
-  emg_max_avg  = maxc.mean;
+  emg_max_avg = maxc.mean;
   emg_max_peak = maxc.peak;
   computeThresholds(emg_rest_avg, emg_max_avg);
 
   Serial.println("--- READING COMPLETE ---");
-  Serial.print("rest avg = ");    Serial.print(emg_rest_avg);
-  Serial.print(" | max avg = ");  Serial.print(emg_max_avg);
-  Serial.print(" | max peak = "); Serial.println(emg_max_peak);
+  Serial.print("rest avg = ");
+  Serial.print(emg_rest_avg);
+  Serial.print(" | max avg = ");
+  Serial.print(emg_max_avg);
+  Serial.print(" | max peak = ");
+  Serial.println(emg_max_peak);
   printThresholds();
 
   // ---- Sanity warnings ----
-  if (threshold_low <= emg_rest_avg) {
+  if (threshold_low <= emg_rest_avg)
+  {
     Serial.println();
     Serial.println("!! WARNING: low threshold is at or below resting level.");
     Serial.println("   The hand will latch on and never release.");
   }
-  if (threshold_high <= threshold_low) {
+  if (threshold_high <= threshold_low)
+  {
     Serial.println("!! WARNING: no hysteresis gap - high <= low.");
   }
   Serial.println("===================================");
@@ -296,31 +352,81 @@ void runCalibration() {
 
 // ========================================================= command parser
 
-void handleCommand(const String &cmd) {
+void handleCommand(const String &cmd)
+{
   // Manual finger commands clear the EMG latch so the two control paths
   // cannot end up disagreeing about what the hand is doing.
-  if      (cmd == "1") { openFinger(0);  fingersActive = false; }
-  else if (cmd == "2") { closeFinger(0); fingersActive = false; }
-  else if (cmd == "3") { openFinger(1);  fingersActive = false; }
-  else if (cmd == "4") { closeFinger(1); fingersActive = false; }
-  else if (cmd == "5") { openFinger(2);  fingersActive = false; }
-  else if (cmd == "6") { closeFinger(2); fingersActive = false; }
-  else if (cmd == "7") { openFinger(3);  fingersActive = false; }
-  else if (cmd == "8") { closeFinger(3); fingersActive = false; }
-  else if (cmd == "0") { stopAll();      fingersActive = false; }
-  else if (cmd == "a") { openAll();      fingersActive = false; }
-  else if (cmd == "s") {
+  if (cmd == "1")
+  {
+    openFinger(0);
+    fingersActive = false;
+  }
+  else if (cmd == "2")
+  {
+    closeFinger(0);
+    fingersActive = false;
+  }
+  else if (cmd == "3")
+  {
+    openFinger(1);
+    fingersActive = false;
+  }
+  else if (cmd == "4")
+  {
+    closeFinger(1);
+    fingersActive = false;
+  }
+  else if (cmd == "5")
+  {
+    openFinger(2);
+    fingersActive = false;
+  }
+  else if (cmd == "6")
+  {
+    closeFinger(2);
+    fingersActive = false;
+  }
+  else if (cmd == "7")
+  {
+    openFinger(3);
+    fingersActive = false;
+  }
+  else if (cmd == "8")
+  {
+    closeFinger(3);
+    fingersActive = false;
+  }
+  else if (cmd == "0")
+  {
+    stopAll();
+    fingersActive = false;
+  }
+  else if (cmd == "a")
+  {
+    openAll();
+    fingersActive = false;
+  }
+  else if (cmd == "s")
+  {
     emgCloseMode = !emgCloseMode;
     Serial.print("EMG mode: ");
     Serial.println(emgCloseMode ? "close on trigger" : "open on trigger");
   }
-  else if (cmd == "t") { printThresholds(); }
-  else if (cmd == "m") {
+  else if (cmd == "t")
+  {
+    printThresholds();
+  }
+  else if (cmd == "m")
+  {
     streaming = !streaming;
     Serial.println(streaming ? "stream on" : "stream muted");
   }
-  else if (cmd == "calibrate") { runCalibration(); }
-  else {
+  else if (cmd == "calibrate")
+  {
+    runCalibration();
+  }
+  else
+  {
     Serial.print("unknown command: ");
     Serial.println(cmd);
   }
@@ -328,12 +434,15 @@ void handleCommand(const String &cmd) {
 
 // =============================================================== framework
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
-  while (!Serial && millis() < 3000);
+  while (!Serial && millis() < 3000)
+    ;
   delay(200);
 
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++)
+  {
     pinMode(fingers[i].in1, OUTPUT);
     pinMode(fingers[i].in2, OUTPUT);
     pinMode(fingers[i].ena, OUTPUT);
@@ -347,29 +456,40 @@ void setup() {
   printThresholds();
 }
 
-void loop() {
+void loop()
+{
   String cmd;
-  if (readLine(cmd)) {
+  if (readLine(cmd))
+  {
     handleCommand(cmd);
   }
 
   int finger_signal = analogRead(SENSOR_PIN);
 
   unsigned long now = millis();
-  if (streaming && (now - lastPrintMs >= PRINT_INTERVAL_MS)) {
+  if (streaming && (now - lastPrintMs >= PRINT_INTERVAL_MS))
+  {
     lastPrintMs = now;
     Serial.println(finger_signal);
   }
 
   // ---- EMG state machine with hysteresis ----
   // Which threshold matters depends on which state we are in.
-  if (!fingersActive) {
-    if (finger_signal > threshold_high) {
-      if (emgCloseMode) closeAll(); else openAll();
+  if (!fingersActive)
+  {
+    if (finger_signal > threshold_high)
+    {
+      if (emgCloseMode)
+        closeAll();
+      else
+        openAll();
       fingersActive = true;
     }
-  } else {
-    if (finger_signal < threshold_low) {
+  }
+  else
+  {
+    if (finger_signal < threshold_low)
+    {
       stopAll();
       fingersActive = false;
     }
