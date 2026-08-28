@@ -27,8 +27,6 @@
 const int SENSOR_PIN = A0;
 int testSpeed = 150;
 
-// This is a random comment
-
 // Live thresholds. Defaults are the hand-tuned values that worked in
 // testing; calibrate overwrites them.
 int threshold_low = 140;
