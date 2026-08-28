@@ -13,19 +13,19 @@ int testSpeed = 150;
 const int SENSOR_PIN = A0;
 int threshold = 200;  // placeholder — retune once you see real numbers
 
+bool fingersActive = false;   // true = EMG has triggered and not yet released
+bool emgCloseMode = true;     // true = threshold crossing closes; false = threshold crossing opens
 
 void openFinger(int i) {
   digitalWrite(fingers[i].in1, HIGH);
   digitalWrite(fingers[i].in2, LOW);
   analogWrite(fingers[i].ena, testSpeed);
-  Serial.print("Finger "); Serial.print(i + 1); Serial.println(" opening");
 }
 
 void closeFinger(int i) {
   digitalWrite(fingers[i].in1, LOW);
   digitalWrite(fingers[i].in2, HIGH);
   analogWrite(fingers[i].ena, testSpeed);
-  Serial.print("Finger "); Serial.print(i + 1); Serial.println(" closing");
 }
 
 void stopFinger(int i) {
@@ -39,6 +39,16 @@ void stopAll() {
   Serial.println("All fingers stopped");
 }
 
+void closeAll() {
+  for (int i = 0; i < 4; i++) closeFinger(i);
+  Serial.println("All fingers closing");
+}
+
+void openAll() {
+  for (int i = 0; i < 4; i++) openFinger(i);
+  Serial.println("All fingers opening");
+}
+
 void setup() {
   Serial.begin(115200);
   for (int i = 0; i < 4; i++) {
@@ -47,9 +57,8 @@ void setup() {
     pinMode(fingers[i].ena, OUTPUT);
     stopFinger(i);
   }
-  Serial.println("Ready. Keys 1-8: odd=open, even=close. '0' = stop all.");
-
   pinMode(LED_BUILTIN, OUTPUT);
+  Serial.println("Ready. Keys 1-8: odd=open, even=close. '0'=stop all. 'A'=open all. 's'=toggle EMG mode.");
 }
 
 void loop() {
@@ -64,35 +73,33 @@ void loop() {
       case '6': closeFinger(2); break;
       case '7': openFinger(3); break;
       case '8': closeFinger(3); break;
-      case '0': stopAll(); break;
+      case '0':
+        stopAll();
+        fingersActive = false;
+        break;
+      case 'A':
+        openAll();
+        fingersActive = false;
+        break;
+      case 's':
+        emgCloseMode = !emgCloseMode;
+        Serial.print("EMG mode: ");
+        Serial.println(emgCloseMode ? "close on trigger" : "open on trigger");
+        break;
     }
+  }
 
-    int finger_signal = analog.read(SENSOR_PIN);
+  int finger_signal = analogRead(SENSOR_PIN);
 
-    if (finger_signal>threshold){
-      openFinger(0);
-    }else{
-      
+  if (finger_signal > threshold) {
+    if (!fingersActive) {
+      if (emgCloseMode) closeAll(); else openAll();
+      fingersActive = true;
     }
-}
-
-
+  } else {
+    if (fingersActive) {
+      stopAll();
+      fingersActive = false;
+    }
   }
 }
-
-
-
-// const int SENSOR_PIN = A0;
-
-// // float envelope = 0;
-// int threshold = 200;  // placeholder — retune once you see real numbers
-
-// void setup() {
-//   Serial.begin(115200);
-//   delay(2000);
-//   pinMode(LED_BUILTIN, OUTPUT); /
-// }
-
-// void loop() {
-//  \
-// }
