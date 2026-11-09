@@ -39,7 +39,7 @@ Wait for PlatformIO to finish initialising (the alien-head icon appears in the l
 
 ### 2. Open the project
 
-`platformio.ini` is committed, and `.pio/` and `.vscode/` are gitignored because they are machine-specific. VS Code and PlatformIO generate them for you.
+`platformio.ini` is committed, and `.pio/` and `.vscode/` are git ignored because they are machine-specific. VS Code and PlatformIO generate them for you.
 
 1. Use File > Open Folder and pick the project folder (the one containing `platformio.ini`), not the repo root.
 2. If VS Code asks how to configure IntelliSense, choose "Do not configure with a compiler". PlatformIO supplies the include paths.
