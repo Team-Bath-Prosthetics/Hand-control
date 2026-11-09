@@ -5,7 +5,7 @@ const int IN1 = 5;
 const int IN2 = 6;
 const int ENA = 9;
 
-int testSpeed = 700; // 0-255
+int testSpeed = 700; // 0-255 - not a valid PWM range 
 
 void setup() {
   Serial.begin(115200);
